@@ -50,12 +50,10 @@ const NewDocumentModal = ({ isOpen, onClose, onSave }) => {
 export default function IDE() {
   const [codeText, setCodeText] = useState("");
   const [documents, setDocuments] = useState([]);
-  const [documentID, setDocumentID] = useState("");
-
+  const [documentId, setDocumentId] = useState("");
   const [URL, setURL] = useState("");
   const [project, setProject] = useState("");
   const [user, setUser] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const supabase = createClientComponentClient();
 
@@ -133,7 +131,7 @@ export default function IDE() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ code: codeText, project: project["id"] }),
+        body: JSON.stringify({ code: codeText, id: documentId }),
       });
     } catch (error) {
       console.log(`Failed to save code: ${error}`);
@@ -191,7 +189,8 @@ export default function IDE() {
           userId: user.id,
         }),
       });
-      newDocument.id = await response.json();
+      newDocument._id = await response.json();
+      console.log(newDocument._id);
 
       if (!response.ok) {
         throw new Error(`Error loading project: ${response.status}`);
@@ -200,6 +199,8 @@ export default function IDE() {
       console.log(`Failed to save code: ${error}`);
     }
     setDocuments([...documents, newDocument]);
+    setCodeText(newDocument.text);
+    setDocumentId(newDocument._id);
     // Optionally, close the modal here if not already handled
     setShowModal(false);
   };
@@ -216,8 +217,8 @@ export default function IDE() {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-7xl items-start gap-6 px-4 py-6 sm:px-6 lg:px-8 border border-gray-200">
-        <aside className="sticky top-8 w-64 shrink-0 lg:block border border-gray-200">
+      <div className="mx-auto flex w-full max-w-7xl items-start gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <aside className="sticky top-8 w-64 shrink-0 lg:block rounded-md border border-gray-200">
           <div className="mb-4">
             {" "}
             {/*Spacing above doc list */}
@@ -233,8 +234,8 @@ export default function IDE() {
               onSave={saveNewDocument}
             />
           </div>
-
-          <ul className="border border-gray-200 rounded-md divide-y divide-gray-200">
+          {console.log(documents)}
+          <ul className="divide-y divide-gray-200">
             {documents.map((document) => (
               <li
                 key={document._id.toString()}
@@ -243,7 +244,7 @@ export default function IDE() {
                 <button
                   onClick={() => {
                     setCodeText(document.text);
-                    setDocumentID(document._id);
+                    setDocumentId(document._id);
                   }}
                   className="text-blue-600 hover:text-blue-800 block"
                 >

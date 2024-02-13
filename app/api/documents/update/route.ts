@@ -21,14 +21,17 @@ export async function POST(req: NextRequest) {
   const database = client.db(dbName);
   const collection = database.collection(collectionName);
 
-  try {
-    const insertResult = await collection.insertOne({
-      name: "file.js",
-      text: data["code"],
-    });
-    const objectIdString = insertResult.insertedId.toString();
+  console.log(data);
 
-    console.log(objectIdString);
+  try {
+    const updateResult = await collection.updateOne(
+      {
+        _id: new ObjectId(data["id"]),
+      },
+      { $set: { text: data["code"] } }
+    );
+
+    console.log(updateResult);
   } catch (err) {
     console.error(
       `Something went wrong trying to insert the new documents: ${err}\n`

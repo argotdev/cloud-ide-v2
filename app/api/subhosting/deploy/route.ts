@@ -9,14 +9,12 @@ export async function POST(req: NextRequest) {
   let assets = {};
   for (const document of data.documents) {
     assets[document.name] = {
-      // Use bracket notation to set the key based on document.name
       kind: "file",
       content: document.text,
       encoding: "utf-8",
     };
   }
 
-  // Replace with your desired project ID
   const res = await fetch(`${API}/projects/${data["project"]}/deployments`, {
     method: "POST",
     headers: {
@@ -32,6 +30,7 @@ export async function POST(req: NextRequest) {
 
   const deno_data = await res.json();
   console.log("Deno deployment created:", deno_data);
+  //const deno_data = [];
 
   return Response.json(deno_data);
 }

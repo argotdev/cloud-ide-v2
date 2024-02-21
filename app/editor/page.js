@@ -3,6 +3,12 @@
 import Editor from "@monaco-editor/react";
 import { useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import {
+  getCollection,
+  updateDocuments,
+  deleteDocument,
+  createDocument,
+} from "../lib/db";
 
 const NewDocumentModal = ({ isOpen, onClose, onSave }) => {
   const [documentName, setDocumentName] = useState("");
@@ -53,11 +59,16 @@ export default function IDE() {
   const [documentId, setDocumentId] = useState("");
   const [URL, setURL] = useState("");
   const [project, setProject] = useState("");
-  const [user, setUser] = useState("");
+  const [user, setUser] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [iframeURL, setIframeURL] = useState("");
+  const [deploymentId, setDeploymentId] = useState("");
+  const [deploymentStatus, setDeploymentStatus] = useState("");
   const supabase = createClientComponentClient();
 
   useEffect(() => {
+    if (!user) return;
     async function getSupabaseUser() {
       const {
         data: { user: supabaseUser },
@@ -65,6 +76,7 @@ export default function IDE() {
 
       if (supabaseUser) {
         // redirect to editor page
+        console.log(supabaseUser);
         setUser(supabaseUser);
       } else {
         console.log("user is not logged in");
@@ -72,9 +84,10 @@ export default function IDE() {
     }
 
     getSupabaseUser();
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
+    if (project != "") return;
     const createSubhosting = async () => {
       try {
         const response = await fetch("/api/subhosting/create", {
@@ -91,32 +104,24 @@ export default function IDE() {
         console.error("Failed to create project:", error);
       }
     };
-
     const getDocuments = async () => {
-      try {
-        // Assuming user is required to be logged in
-        if (!user) return;
-
-        const response = await fetch("/api/documents/get", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId: user.id }), // Assuming API expects userId
-        });
-
-        if (!response.ok) {
-          throw new Error(`Error loading project: ${response.status}`);
-        }
-
-        const responseData = await response.json();
-        setDocuments(responseData);
-      } catch (error) {
-        console.error("Failed to load project:", error);
-      }
+      console.log(user);
+      const collection = await getCollection(user);
+      setDocuments(collection);
     };
     getDocuments();
     createSubhosting();
+  }, [user]); // Add dependency on user
+
+  useEffect(() => {
+    if (user && project) {
+      const getDocuments = async () => {
+        console.log(user);
+        const collection = await getCollection(user);
+        setDocuments(collection);
+      };
+      getDocuments();
+    }
   }, [user]); // Add dependency on user
 
   const handleEditorChange = (value, event) => {
@@ -125,22 +130,14 @@ export default function IDE() {
 
   const handleUpdate = async (event) => {
     event.preventDefault();
-    try {
-      const response = await fetch("/api/documents/update", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ code: codeText, id: documentId }),
-      });
-    } catch (error) {
-      console.log(`Failed to save code: ${error}`);
-    }
+    const holder = await updateDocuments(codeText, documentId);
   };
 
   const handleRun = async (event) => {
     event.preventDefault();
     setURL(""); // Clear previous response message
+    console.log("handleRun docs", documents);
+    console.log("handleRun project", project);
 
     try {
       const response = await fetch("/api/subhosting/deploy", {
@@ -156,18 +153,60 @@ export default function IDE() {
       }
 
       const responseData = await response.json(); // Assuming the response is in JSON format
-      console.log(responseData);
+      console.log("response data from deploy: ", responseData);
       setURL(`https://${project.name}-${responseData.id}.deno.dev`); // Update the response message state
+      setDeploymentId(responseData.id);
     } catch (error) {
       setURL(`Failed to deploy code: ${error}`);
     }
+    console.log("project URL: ", URL);
   };
+
+  useEffect(() => {
+    if (URL === "") return;
+    let isMounted = true; // Track if component is mounted to prevent state update on unmounted component
+
+    const checkDeploymentStatus = async () => {
+      try {
+        while (isMounted && deploymentStatus !== "complete") {
+          const response = await fetch("/api/subhosting/poll", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              deploymentId: deploymentId,
+            }),
+          });
+          const status = await response.json();
+          console.log(status);
+          if (status === "success") {
+            if (isMounted) {
+              setDeploymentStatus("complete");
+              setIframeURL(URL);
+            }
+          } else {
+            // Wait for a specified time before the next check
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check job status:", error);
+      }
+    };
+
+    checkDeploymentStatus();
+
+    return () => {
+      isMounted = false; // Set isMounted to false when the component unmounts
+    };
+  }, [deploymentStatus, URL]);
 
   const handleAddNewDocument = () => {
     setShowModal(true);
   };
 
-  const saveNewDocument = async (documentName) => {
+  const createNewDocument = async (documentName) => {
     // Here you would send the documentName to your API to save it in MongoDB
     // For demonstration, assuming the document gets saved and returns an ID
 
@@ -176,28 +215,8 @@ export default function IDE() {
       name: documentName,
       text: "// New code here",
     };
-
-    try {
-      const response = await fetch("/api/documents/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: newDocument.name,
-          text: newDocument.text,
-          userId: user.id,
-        }),
-      });
-      newDocument._id = await response.json();
-      console.log(newDocument._id);
-
-      if (!response.ok) {
-        throw new Error(`Error loading project: ${response.status}`);
-      }
-    } catch (error) {
-      console.log(`Failed to save code: ${error}`);
-    }
+    const newDocumentId = await createDocument(documentName);
+    newDocument._id = newDocumentId;
     setDocuments([...documents, newDocument]);
     setCodeText(newDocument.text);
     setDocumentId(newDocument._id);
@@ -231,10 +250,9 @@ export default function IDE() {
             <NewDocumentModal
               isOpen={showModal}
               onClose={() => setShowModal(false)}
-              onSave={saveNewDocument}
+              onSave={createNewDocument}
             />
           </div>
-          {console.log(documents)}
           <ul className="divide-y divide-gray-200">
             {documents.map((document) => (
               <li
@@ -284,10 +302,15 @@ export default function IDE() {
 
         <aside className="sticky top-8 shrink-0 xl:block w-96">
           <div className="p-6 rounded-md border border-gray-200">
-            {" "}
-            {/*Iframe wrapper*/}
+            {isLoading && <p className="text-center">Request sent...</p>}
             <iframe
-            // ... keep your existing iframe configuration
+              src={iframeURL}
+              title="Deployed Project"
+              width="100%"
+              height="300px"
+              //onLoad={handleLoad}
+              //onError={handleError}
+              style={{ display: isLoading ? "none" : "block" }} // Hide iframe while loading
             ></iframe>
           </div>
         </aside>

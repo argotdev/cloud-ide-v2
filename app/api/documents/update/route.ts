@@ -32,6 +32,10 @@ export async function POST(req: NextRequest) {
     );
 
     console.log(updateResult);
+    if (updateResult.modifiedCount == 1) {
+      return Response.json(data["id"]);
+    }
+    return Response.json("Error");
   } catch (err) {
     console.error(
       `Something went wrong trying to insert the new documents: ${err}\n`

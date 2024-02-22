@@ -100,6 +100,7 @@ export default function IDE() {
 
         const responseData = await response.json();
         setProject(responseData);
+        console.log(responseData);
       } catch (error) {
         console.error("Failed to create project:", error);
       }
@@ -207,15 +208,14 @@ export default function IDE() {
   };
 
   const createNewDocument = async (documentName) => {
-    // Here you would send the documentName to your API to save it in MongoDB
-    // For demonstration, assuming the document gets saved and returns an ID
-
     const newDocument = {
       _id: "",
       name: documentName,
       text: "// New code here",
     };
-    const newDocumentId = await createDocument(documentName);
+    console.log(newDocument);
+    const newDocumentId = await createDocument(newDocument, user);
+    console.log(newDocumentId);
     newDocument._id = newDocumentId;
     setDocuments([...documents, newDocument]);
     setCodeText(newDocument.text);

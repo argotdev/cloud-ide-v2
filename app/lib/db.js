@@ -13,13 +13,13 @@ export const getCollection = async (user) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Error loading project: ${response.status}`);
+      throw new Error(`Error loading documents: ${response.status}`);
     }
 
     const responseData = await response.json();
     return responseData;
   } catch (error) {
-    console.error("Failed to load project:", error);
+    console.error("Failed to load documents:", error);
   }
 };
 
@@ -33,37 +33,16 @@ export const updateDocuments = async (codeText, documentId) => {
       body: JSON.stringify({ code: codeText, id: documentId }),
     });
     if (!response.ok) {
-      throw new Error(`Error loading project: ${response.status}`);
+      throw new Error(`Error updating document: ${response.status}`);
     }
     const responseData = await response.json();
     return responseData;
   } catch (error) {
-    console.log(`Failed to save code: ${error}`);
+    console.log(`Failed to update document: ${error}`);
   }
 };
 
-export const deleteDocument = async (id) => {
-  try {
-    const response = await fetch("/api/documents/delete", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ id }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error loading project: ${response.status}`);
-    }
-
-    const responseData = await response.json();
-    setDocuments(responseData);
-  } catch (error) {
-    console.error("Failed to load project:", error);
-  }
-};
-
-export const createDocument = async (documentName) => {
+export const createDocument = async (newDocument, user) => {
   try {
     const response = await fetch("/api/documents/create", {
       method: "POST",
@@ -76,13 +55,14 @@ export const createDocument = async (documentName) => {
         userId: user.id,
       }),
     });
-    newDocumentId = await response.json();
+    const newDocumentId = await response.json();
     console.log(newDocumentId);
 
     if (!response.ok) {
-      throw new Error(`Error loading project: ${response.status}`);
+      throw new Error(`Error saving document: ${response.status}`);
     }
+    return newDocumentId;
   } catch (error) {
-    console.log(`Failed to save code: ${error}`);
+    console.log(`Failed to save document: ${error}`);
   }
 };

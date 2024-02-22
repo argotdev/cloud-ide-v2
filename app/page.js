@@ -27,18 +27,21 @@ export default function Home() {
 
   getSupabaseUser();
 
-  async function signIn() {
-    const { data, error } = await supabase.auth.signInWithPassword({
+  const handleSignUp = async () => {
+    await supabase.auth.signUp({
       email,
       password,
     });
     router.refresh();
-    if (error) {
-      console.error(error);
-      return;
-    }
-    // Optionally redirect the user after sign in
-  }
+  };
+
+  const handleSignIn = async () => {
+    await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    router.refresh();
+  };
 
   return (
     <>
@@ -90,13 +93,20 @@ export default function Home() {
             </div>
 
             {/* Submit button */}
-            <div className="mt-6">
+            <div className="mt-6 flex justify-center space-x-4">
               <button
                 type="button"
-                className="rounded-md bg-btn-background px-4 py-2 no-underline hover:bg-btn-background-hover w-full"
-                onClick={signIn}
+                className="rounded-md bg-btn-background px-4 py-2 no-underline hover:bg-btn-background-hover"
+                onClick={handleSignUp}
               >
-                Login
+                Sign up
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-btn-background px-4 py-2 no-underline hover:bg-btn-background-hover"
+                onClick={handleSignIn}
+              >
+                Sign in
               </button>
             </div>
           </div>

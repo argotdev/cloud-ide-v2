@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     const documents = await documentsCursor.toArray();
 
     console.log("Loaded documents:", documents);
+    client.close();
     return Response.json(documents);
   } catch (err) {
     console.error(

@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
     const objectIdString = insertResult.insertedId.toString();
 
     console.log(objectIdString);
+    client.close();
     return Response.json(objectIdString);
   } catch (err) {
     console.error(

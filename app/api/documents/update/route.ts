@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     );
 
     console.log(updateResult);
+    client.close();
     if (updateResult.modifiedCount == 1) {
       return Response.json(data["id"]);
     }
